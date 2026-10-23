@@ -27,7 +27,7 @@ find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
-
+find_package(visualization_msgs REQUIRED)
 ament_python_install_package(${PROJECT_NAME})
 
 set(dependencies
@@ -59,10 +59,18 @@ ament_target_dependencies(pure_pursuit ${dependencies})
 
 add_executable(smoothing src/smoothing.cpp)
 ament_target_dependencies(smoothing ${dependencies})
+# New MPPI controller
+add_executable(mppi_controller src/mppi_controller.cpp)
+ament_target_dependencies(mppi_controller ${dependencies})
 
+ament_target_dependencies(mppi_controller
+  rclcpp
+  visualization_msgs
+)
 install(TARGETS
     pure_pursuit
     smoothing
+    mppi_controller
     DESTINATION lib/${PROJECT_NAME})
 
 install(PROGRAMS

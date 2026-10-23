@@ -1,229 +1,92 @@
-# Autonomous Navigation with Regulated Pure Pursuit
-
-A ROS2-based navigation stack implementing path smoothing and regulated pure pursuit control for differential drive robots in constrained environments. [Video](https://drive.google.com/file/d/17OE4Cf4g9UPwNrmvYiQqMd2OCQQHhMXT/view?usp=sharing)
+# Robotics Testing Engineer Assignment — MPPI-Based Navigation
 
 ## Overview
 
-This package addresses the challenge of converting discrete waypoints from a global planner into smooth, dynamically-feasible trajectories while ensuring accurate tracking with adaptive velocity regulation.
+This project replaces the Pure Pursuit tracking approach with an MPPI-style controller for a ROS 2 mobile robot. The controller uses a planned path, odometry, and 2D LiDAR measurements to select velocity commands while considering obstacle clearance and motion smoothness.
 
-### Key Features
+Implemented components:
+- Cost-weighted sampling of candidate control sequences.
+- Local target selection along the planned path.
+- LiDAR scan processing and transformation into the `odom` frame using TF.
+- Obstacle penalties during predicted trajectory evaluation.
+- Recovery candidate evaluation when normal sampling does not produce a valid sequence.
+- Velocity command publishing to `/cmd_vel`.
 
-- **Path Smoothing**: Converts discrete waypoints into continuous trajectories with rounded corners
-- **Regulated Pure Pursuit**: Adaptive velocity control based on path curvature and proximity to obstacles
-- **Dynamic Obstacle Avoidance**: Real-time laser scan integration for collision prevention
-- **Velocity Scaling**: Automatic speed reduction at sharp turns and near goal positions
-- **Tight Space Navigation**: Suitable for confined environments with dynamic obstacles
+## Environment
 
-## Problem Statement
+- Ubuntu 22.04
+- ROS 2 Humble
+- Gazebo simulation
+- C++
+- `/path` — `nav_msgs/msg/Path`
+- `/odom` — `nav_msgs/msg/Odometry`
+- `/scan` — `sensor_msgs/msg/LaserScan`
+- `/cmd_vel` — `geometry_msgs/msg/Twist`
 
-Mobile robots typically receive coarse paths consisting of discrete waypoints from global planners. Direct execution of these waypoints results in:
-- Jerky, non-smooth motion
-- Potential collision risks at sharp corners
-- Inefficient velocity profiles
-- Poor trajectory tracking accuracy
+Confirm the exact Gazebo version and dependencies in the environment used for the final demonstration.
 
-This implementation solves these issues through:
-1. **Path Refinement**: Smoothing discrete waypoints into continuous trajectories
-2. **Adaptive Control**: Regulating velocity based on local path geometry and obstacles
-3. **Safe Navigation**: Real-time obstacle detection and avoidance
-
-## Architecture
-
-```
-┌─────────────────┐
-│   Waypoints     │
-│   (CSV File)    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────┐
-│  Path Smoother Node     │
-│  - Bézier interpolation │
-│  - Corner rounding      │
-└──────────┬──────────────┘
-           │ /path (nav_msgs/Path)
-           ▼
-┌──────────────────────────────┐
-│  Pure Pursuit Controller     │
-│  - Lookahead calculation     │
-│  - Curvature-based scaling   │
-│  - Obstacle detection        │
-└──────────┬───────────────────┘
-           │ /cmd_vel
-           ▼
-┌──────────────────┐
-│  Differential    │
-│  Drive Robot     │
-└──────────────────┘
-```
-
-## Algorithm Details
-
-### Path Smoothing
-
-The smoother applies Bézier curve interpolation at waypoint corners:
-- Detects sharp angles between consecutive segments
-- Inserts quadratic Bézier curves with configurable radius
-- Maintains path connectivity and resolution
-- Preserves start and end points
-
-### Regulated Pure Pursuit
-
-Standard pure pursuit enhanced with:
-
-**Curvature-Based Velocity Regulation**
-```
-v = v_desired × min(1.0, r_min/r_current)
-```
-Where `r` is the path curvature radius
-
-**Approach Velocity Scaling**
-```
-v = v × min(1.0, d_goal/d_scaling)
-```
-Smoothly decelerates as the robot approaches the goal
-
-**Adaptive Lookahead Distance**
-```
-L_d = clamp(v × t_lookahead, L_min, L_max)
-```
-Velocity-scaled lookahead for stable tracking
-
-**Rotate-to-Heading**
-- Triggers in-place rotation when heading error exceeds threshold
-- Prevents lateral drift at sharp corners
-
-**Obstacle Detection**
-- 120° frontal scan coverage (-60° to +60°)
-- 0.5m detection threshold
-- Immediate stop-and-wait behavior
-
-## Installation
+## Build
 
 ```bash
-cd ~/ros2_ws/src
-git clone https://github.com/manojkarnekar/smoothing-rpp.git nav
 cd ~/ros2_ws
-colcon build --symlink-install
+source /opt/ros/humble/setup.bash
+colcon build --packages-select nav --symlink-install
 source install/setup.bash
 ```
+## ros2 launch nav sim_bringup.py
+ 
+## Running the Simulation
 
-## Usage
+1. Start Gazebo using the launch command configured in your workspace.
+2. Start the path-generation and smoothing components required by your project.
+3. Start the MPPI controller using your configured launch setup.
+4. Confirm `/path`, `/odom`, and `/scan` are publishing and that TF can transform the LiDAR frame into `odom`.
+5. Observe the robot and `/cmd_vel` during each test.
 
-### 1. Launch Simulation Environment
+**Before submitting:** Add the exact launch commands used in your working environment. They are not included here because the exact launch configuration has not been confirmed.
 
-**Terminal 1:**
-```bash
-export TURTLEBOT3_MODEL=burger
-ros2 launch nav sim_bringup.py
-```
+## Test Summary
 
-This launches:
-- Gazebo with empty world
-- TurtleBot3 model
-- Pure pursuit controller
-- RViz2 visualization
+You reported that you tested the robot in Gazebo and that obstacle avoidance and rejoining the original path both work.
 
-**Add obstacles in Gazebo** after launch for testing dynamic avoidance.
+Include evidence for the scenarios you actually tested:
+- Path following.
+- Static cylinder obstacle avoidance.
+- Rejoining the original path.
+- Dynamic-obstacle response, if tested.
+- Safe stopping when no acceptable recovery candidate is available, if tested.
 
-### 2. Start Path Smoother
+Record each actual outcome and do not mark a scenario as passed unless it was tested.
 
-**Terminal 2:**
-```bash
-ros2 run nav smoothing
-```
+## Controller Parameters
 
-Loads waypoints from CSV, generates smooth trajectory, and publishes:
+These are the code's default values; runtime configuration may override them.
 
-- Original waypoints to /waypoints (visualized in red in RViz)
-- Smoothed trajectory to /path (visualized in green in RViz)
+| Parameter | Default | Description |
+|---|---:|---|
+| `samples` | 300 | Number of sampled control sequences |
+| `horizon_steps` | 20 | Predicted steps per sequence |
+| `dt` | 0.1 s | Prediction time step |
+| `max_linear` | 0.18 m/s | Maximum forward speed |
+| `max_angular` | 1.0 rad/s | Maximum angular speed |
+| `obstacle_margin` | 0.45 m | Preferred obstacle-clearance margin |
+| `lookahead_distance` | 0.45 m | Distance used to select a path target |
+| `goal_tolerance` | 0.20 m | Goal-completion distance threshold |
+| `mppi_lambda` | 10.0 | Exponential cost-weighting parameter |
+| `noise_linear_std` | 0.06 | Linear sampling-noise standard deviation |
+| `noise_angular_std` | 0.35 | Angular sampling-noise standard deviation |
 
-## Configuration
+## Limitations
 
-### Waypoint File Format
+- The controller uses a simplified point-based representation of LiDAR obstacles.
+- It reacts to updated LiDAR measurements but does not explicitly estimate each moving obstacle's velocity or predict its future trajectory.
+- Sampling and recovery checks do not provide a formal guarantee of collision-free motion. Results depend on sensor data, transforms, parameter values, and test conditions.
 
-`waypoints/waypoint.csv`:
-```csv
-0.0,0.0
-1.0,0.0
-1.0,1.0
-2.0,1.0
-```
+## Submission Checklist
 
-### Key Parameters
-
-**Path Smoother** (`smoothing` node):
-- `path_resolution`: Interpolation resolution (default: 0.1m)
-- `path_file`: CSV waypoint file path
-- `frame_id`: TF frame for path (default: "odom")
-
-**Pure Pursuit** (`pure_pursuit_tracker` node):
-- `desired_linear_vel`: Target velocity (default: 0.3 m/s)
-- `lookahead_time`: Lookahead time horizon (default: 1.5s)
-- `min_lookahead_distance`: Minimum lookahead (default: 0.3m)
-- `max_lookahead_distance`: Maximum lookahead (default: 0.9m)
-- `regulated_linear_scaling_min_radius`: Curvature regulation threshold (default: 0.9m)
-- `velocity_scaling_distance`: Goal approach distance (default: 0.5m)
-- `rotate_to_heading_min_angle`: In-place rotation threshold (default: 0.785 rad)
-
-## Topics
-
-| Topic | Type | Description |
-|-------|------|-------------|
-| `/path` | nav_msgs/Path | Smoothed trajectory |
-| `/waypoints` | nav_msgs/Path | Original waypoints |
-| `/cmd_vel` | geometry_msgs/Twist | Velocity commands |
-| `/scan` | sensor_msgs/LaserScan | Laser scan data |
-| `/odom` | nav_msgs/Odometry | Robot odometry |
-| `/pure_pursuit/lookahead_point` | geometry_msgs/PointStamped | Current lookahead point |
-
-## Behavior Characteristics
-
-### Smooth Motion
-- Continuous velocity profiles without sudden changes
-- Gradual acceleration/deceleration based on curvature
-- No oscillations or overshoot at waypoints
-
-### Tight Space Navigation
-- Automatic speed reduction in narrow passages
-- Stop-and-wait for dynamic obstacles
-- Maintains safe clearance from obstacles
-
-### Robustness
-- Handles missed TF lookups gracefully
-- Path preemption support for replanning
-- Goal tolerance checking with configurable thresholds
-
-## Performance
-
-Typical performance metrics:
-- Path tracking error: < 0.1m (straight segments)
-- Goal reaching accuracy: < 0.2m
-- Obstacle detection latency: < 50ms
-- Control loop frequency: 30 Hz
-
-## Future Enhancements
-
-- Trajectory optimization with time-optimal velocity profiles
-- Model Predictive Control (MPC) for tighter tracking
-- Dynamic window approach integration
-- Multi-resolution path smoothing
-- Recovery behaviors for stuck scenarios
-
-## Dependencies
-
-- ROS2 Humble
-- TurtleBot3 packages
-- Gazebo Classic
-- RViz2
-- tf2_ros
-- sensor_msgs
-- nav_msgs
-- geometry_msgs
-
-## License
-
-
-## Author
-
-Manoj K
+- [ ] Final `mppi_controller.cpp`
+- [ ] Exact launch commands added to this README
+- [ ] Build output captured
+- [ ] Gazebo demonstration video captured
+- [ ] Test results recorded accurately
+- [ ] Only relevant source/configuration files included
