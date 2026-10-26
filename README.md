@@ -1,4 +1,4 @@
-# Robotics Testing Engineer Assignment — MPPI-Based Navigation
+# MPPI-Based Navigation
 
 ## Overview
 
