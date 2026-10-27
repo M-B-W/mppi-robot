@@ -54,7 +54,7 @@ ros2 launch nav sim_bringup.py
 4. Confirm `/path`, `/odom`, and `/scan` are publishing and that TF can transform the LiDAR frame into `odom`.
 5. Observe the robot and `/cmd_vel` during each test.
 
-**Before submitting:** Verify that `ros2 launch nav sim_bringup.py` is the exact command that launches your complete setup. If it does not start all required components, add the separate commands you used.
+
 
 ## Test Summary
 
