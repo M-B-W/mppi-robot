@@ -96,7 +96,7 @@ These are the code's default values; runtime configuration may override them.
 
 [Watch the Gazebo demonstration video](https://drive.google.com/file/d/1RSF3C_x0djRSXUE1xoCxx9xtB7YZx9BD/view?usp=sharing)
 
-## Submission Checklist
+## Checklist
 
 - [ ] Final `mppi_controller.cpp` included
 - [ ] Exact launch commands verified and documented
